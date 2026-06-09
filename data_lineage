@@ -1,0 +1,258 @@
+# AWDB Data Lineage
+
+**Project:** Test_AWDB
+**Database:** MSSQL — AWDB
+**Documented:** 2026-06-09
+**Layers:** Source → Staging → Mart (Dimensions + Facts) → KPI
+
+---
+
+## Object Registry
+
+| Layer | Object | Type | Rows | Created |
+|-------|--------|------|------|---------|
+| Source | `customers` | Table | 18,148 | 2026-05-26 |
+| Source | `calendar` | Table | 912 | 2026-05-26 |
+| Source | `territories` | Table | 10 | 2026-05-26 |
+| Source | `product_category` | Table | 4 | 2026-05-26 |
+| Source | `product_subcategory` | Table | 37 | 2026-05-26 |
+| Source | `products` | Table | 293 | 2026-05-26 |
+| Source | `sales_2015` | Table | 2,630 | 2026-05-28 |
+| Source | `sales_2016` | Table | 23,935 | 2026-05-28 |
+| Source | `sales_2017` | Table | 29,481 | 2026-05-28 |
+| Source | `returns_data` | Table | 1,809 | 2026-05-28 |
+| Staging | `stg_customer` | View | — | 2026-05-28 |
+| Staging | `stg_calendar` | View | — | 2026-05-28 |
+| Staging | `stg_product` | View | — | 2026-05-28 |
+| Staging | `stg_return` | View | — | 2026-05-28 |
+| Staging | `stg_sales` | View | — | 2026-05-28 |
+| Mart | `dim_customer` | Table | 18,148 | 2026-05-28 |
+| Mart | `dim_date` | Table | 912 | 2026-05-28 |
+| Mart | `dim_product` | Table | 293 | 2026-05-28 |
+| Mart | `dim_territory` | Table | 10 | 2026-05-28 |
+| Mart | `fct_sales` | Table | 56,046 | 2026-05-28 |
+| Mart | `fct_returns` | Table | 1,809 | 2026-05-28 |
+| KPI | `fct_kpi_master` | Table | 1 | 2026-06-08 |
+
+---
+
+## Row Flow
+
+```
+sales_2015  (2,630)  ─┐
+sales_2016  (23,935) ─┼──► stg_sales (UNION ALL) ──────► fct_sales  (56,046) ─┐
+sales_2017  (29,481) ─┘                                                          ├──► fct_kpi_master (1)
+returns_data (1,809) ────► stg_return ─────────────────► fct_returns (1,809)  ──┘
+
+customers   (18,148) ────► stg_customer ───────────────► dim_customer (18,148)
+calendar       (912) ────► stg_calendar ───────────────► dim_date       (912)
+products       (293) ────► stg_product ────────────────► dim_product    (293)
+territories     (10) ────► [no stg view ⚠️] ───────────► dim_territory   (10)
+product_category + product_subcategory ──► [no stg view ⚠️] ──► dim_product (denormalised)
+```
+
+---
+
+## Layer-by-Layer Lineage
+
+### Layer 1 — Source Tables
+
+Raw data loaded into `dbo` schema. No transformations applied at this layer.
+
+| Table | Key Column | Notes |
+|-------|------------|-------|
+| `customers` | `customerkey` | 18,148 customers. Mixed date formats in `birthdate`. Names in ALL CAPS. |
+| `calendar` | `date` | varchar date spine. US locale format `M/DD/YYYY` only. |
+| `territories` | `salesterritorykey` | 10 global sales territories. Clean. |
+| `product_category` | `productcategorykey` | 4 categories: Bikes, Components, Clothing, Accessories. |
+| `product_subcategory` | `productsubcategorykey` | 37 subcategories. FK → `product_category`. |
+| `products` | `productkey` | 293 products. `'0'` sentinel on `productsize`/`productstyle`. |
+| `sales_2015` | `ordernumber` + `orderlineitem` | 2,630 rows. Bikes only. 1 line item per order. |
+| `sales_2016` | `ordernumber` + `orderlineitem` | 23,935 rows. Multi-category from July 2016. |
+| `sales_2017` | `ordernumber` + `orderlineitem` | 29,481 rows. Full multi-category. |
+| `returns_data` | composite | 1,809 returns. Mixed date formats in `returndate`. |
+
+---
+
+### Layer 2 — Staging (Views)
+
+All staging models are `materialized='view'` — no data stored, transformations applied at query time.
+
+#### `stg_customer` ← `customers`
+
+| Transform | Detail |
+|-----------|--------|
+| Rename | `customerkey → customer_key`, snake_case throughout |
+| Date cast | `COALESCE(TRY_CONVERT(date, birthdate, 120), TRY_CONVERT(date, birthdate, 101))` — fixes mixed ISO + US locale formats |
+| Title case | `UPPER(LEFT) + LOWER(SUBSTRING)` on `firstname`, `lastname` |
+| Prefix normalise | ALL CAPS (`MR.` → `Mr.`) + NULL fill from gender via `CROSS APPLY` |
+| Gender | `'NA' → 'Unknown'` |
+| Marital status | `'M' → 'Married'`, `'S' → 'Single'` |
+| Homeowner | `'Y' → 1`, `'N' → 0` |
+| Income | Strip `$` and `,`, cast to `DECIMAL(18,2)` |
+| Derived | `full_name` = `first_name + ' ' + last_name` (added in dim layer) |
+
+#### `stg_calendar` ← `calendar`
+
+| Transform | Detail |
+|-----------|--------|
+| Date cast | `TRY_CONVERT(date, date, 101)` — US locale only in source |
+| Output | Single column: `date_day DATE` |
+
+#### `stg_product` ← `products`
+
+| Transform | Detail |
+|-----------|--------|
+| Rename | `productkey → product_key`, snake_case throughout |
+| Sentinel fix | `NULLIF(productsize, '0')`, `NULLIF(productstyle, '0')` |
+| Trim | All varchar columns trimmed |
+| Financials | `productcost`, `productprice` already `DECIMAL(18,2)` — passed through |
+
+#### `stg_return` ← `returns_data`
+
+| Transform | Detail |
+|-----------|--------|
+| Rename | `returndate → return_date`, `territorykey → territory_key`, etc. |
+| Date cast | `COALESCE(TRY_CONVERT(date, returndate, 120), TRY_CONVERT(date, returndate, 101))` |
+
+#### `stg_sales` ← `sales_2015` UNION ALL `sales_2016` UNION ALL `sales_2017`
+
+| Transform | Detail |
+|-----------|--------|
+| Union | All 3 annual tables combined: 2,630 + 23,935 + 29,481 = **56,046 rows** |
+| Date cast | `CAST(orderdate AS DATE)` — already datetime in source |
+| Stock date | `COALESCE(TRY_CONVERT(date, stockdate, 23), TRY_CONVERT(date, stockdate, 101))` |
+| Rename | `ordernumber → order_number`, `orderlineitem → order_line_item`, FKs renamed |
+
+> ⚠️ **`stg_territory`, `stg_product_category`, `stg_product_subcategory`** were defined as dbt models but have **not been run** in the database. `dim_territory` and the category hierarchy in `dim_product` currently read from raw source tables directly, bypassing the staging DQ layer.
+
+---
+
+### Layer 3 — Mart Dimensions
+
+All dimensions are `materialized='table'`.
+
+#### `dim_customer` ← `stg_customer`
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| `customer_key` | `customerkey` | Natural key from source |
+| `prefix` | derived | Title-cased + NULL-filled |
+| `first_name`, `last_name` | `firstname`, `lastname` | Title-cased |
+| `full_name` | derived | Concatenated in dim layer |
+| `gender` | `gender` | `NA` → `Unknown` |
+| `birth_date` | `birthdate` | Parsed from mixed formats |
+| `marital_status` | `maritalstatus` | `M/S` → `Married/Single` |
+| `total_children` | `totalchildren` | Pass-through |
+| `education_level` | `educationlevel` | Pass-through |
+| `occupation` | `occupation` | Pass-through |
+| `is_home_owner` | `homeowner` | `Y/N` → `1/0` |
+| `email_address` | `emailaddress` | Trimmed |
+| `annual_income` | `annualincome` | `DECIMAL(18,2)` — stripped `$`/`,` |
+
+#### `dim_date` ← `stg_calendar`
+
+All date attributes are **derived** — none exist in source.
+
+| Column | Derived From |
+|--------|-------------|
+| `date_key` | `INT` YYYYMMDD format |
+| `date_day` | Parsed date |
+| `year`, `month_number`, `month_name` | `YEAR()`, `MONTH()`, `DATENAME()` |
+| `quarter` | `DATEPART(quarter, ...)` |
+| `week_of_year` | `DATEPART(week, ...)` |
+| `day_of_week`, `day_name` | `DATEPART(weekday, ...)`, `DATENAME(weekday, ...)` |
+| `is_weekend` | `CASE WHEN day_of_week IN (1,7) THEN 1 ELSE 0 END` |
+
+#### `dim_product` ← `stg_product` + `product_subcategory` + `product_category`
+
+Denormalised — the 3-table source hierarchy is collapsed into a single flat dimension.
+
+| Column | Source Table | Notes |
+|--------|-------------|-------|
+| `product_key` | `products` | Natural key |
+| `product_sku` | `products` | Trimmed |
+| `product_name`, `model_name`, `product_description` | `products` | Trimmed |
+| `product_color`, `product_size`, `product_style` | `products` | `NULLIF '0'` applied |
+| `product_cost`, `product_price` | `products` | `DECIMAL(18,2)` |
+| `product_subcategory` | `product_subcategory` | Joined on `productsubcategorykey` |
+| `product_category` | `product_category` | Joined on `productcategorykey` |
+
+#### `dim_territory` ← `territories` ⚠️
+
+| Column | Notes |
+|--------|-------|
+| `territory_key` | Renamed from `salesterritorykey` |
+| `region`, `country`, `continent` | Pass-through |
+
+> ⚠️ Reads directly from raw `territories` — `stg_territory` not yet run in DB.
+
+---
+
+### Layer 4 — Mart Facts
+
+#### `fct_sales` ← `stg_sales` + `dim_product`
+
+Grain: one row per order line item (`order_number` + `order_line_item`).
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| `order_number`, `order_line_item` | `stg_sales` | Natural composite key |
+| `product_key` | `stg_sales` | FK → `dim_product` |
+| `customer_key` | `stg_sales` | FK → `dim_customer` |
+| `territory_key` | `stg_sales` | FK → `dim_territory` |
+| `order_date` | `stg_sales` | Clean date |
+| `order_date_key` | derived | INT YYYYMMDD → FK to `dim_date.date_key` |
+| `stock_date` | `stg_sales` | Mixed format resolved |
+| `order_quantity` | `stg_sales` | Pass-through |
+| `product_price`, `product_cost` | `dim_product` | Looked up at build time |
+| `order_line_revenue` | derived | `order_quantity × product_price` |
+| `order_line_cost` | derived | `order_quantity × product_cost` |
+| `order_line_profit` | derived | `revenue − cost` |
+| `profit_margin_pct` | derived | `profit / revenue × 100` |
+
+#### `fct_returns` ← `stg_return` + `dim_product`
+
+Grain: one row per return event (surrogate `return_id`).
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| `return_id` | derived | Surrogate key (`BIGINT`) |
+| `product_key`, `territory_key` | `stg_return` | FKs |
+| `return_date` | `stg_return` | Mixed format resolved |
+| `return_date_key` | derived | INT YYYYMMDD → FK to `dim_date.date_key` |
+| `return_quantity` | `stg_return` | Pass-through |
+| `product_price` | `dim_product` | Looked up at build time |
+| `return_value` | derived | `return_quantity × product_price` |
+
+---
+
+### Layer 5 — KPI
+
+#### `fct_kpi_master` ← `fct_sales` + `fct_returns`
+
+Single-row aggregate table. 24 pre-calculated KPIs covering the full 2015–2017 window.
+
+| KPI Group | Metrics |
+|-----------|---------|
+| Volume | `total_orders`, `total_line_items`, `total_units_sold`, `total_unique_customers` |
+| Revenue | `total_gross_revenue`, `avg_order_value`, `avg_revenue_per_customer`, `avg_selling_price_per_unit` |
+| Margin | `total_cogs`, `total_gross_profit`, `gross_margin_pct`, `avg_profit_per_order` |
+| Returns | `total_units_returned`, `total_return_value`, `return_rate_pct` |
+| Loyalty | `avg_orders_per_customer`, `avg_units_per_order`, `repeat_customers`, `one_time_customers`, `repeat_customer_rate_pct`, `avg_customer_ltv` |
+
+> ⚠️ `avg_customer_ltv` ($1,904) differs from `avg_revenue_per_customer` ($1,431) — the LTV formula applies a forward-looking multiplier that is not documented in the model code.
+
+---
+
+## Lineage Gaps & Recommended Actions
+
+| Gap | Affected Objects | Recommended Fix | Priority |
+|-----|-----------------|-----------------|----------|
+| `stg_territory` not run in DB | `dim_territory` bypasses DQ layer | Run `stg_territory` in CODE mode | 🔴 High |
+| `stg_product_category` not run | `dim_product` bypasses DQ layer | Run `stg_product_category` in CODE mode | 🔴 High |
+| `stg_product_subcategory` not run | `dim_product` bypasses DQ layer | Run `stg_product_subcategory` in CODE mode | 🔴 High |
+| `fct_kpi_master` upstream not tracked by DB | Invisible in `sys.sql_expression_dependencies` | Document in dbt `schema.yml` | 🟡 Medium |
+| `avg_customer_ltv` formula undocumented | Confusing vs `avg_revenue_per_customer` | Add inline SQL comment + wiki note | 🟡 Medium |
+| No surrogate key on `dim_customer` | Brittle if source key changes | Add `customer_sk` surrogate in dim layer | 🟢 Low |
+| `fct_kpi_master` is a single-row flat summary | No time / territory / category slicing | Build `kpi_by_month`, `kpi_by_territory`, `kpi_by_category` | 🟢 Low |
