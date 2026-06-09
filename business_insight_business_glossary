@@ -1,0 +1,410 @@
+# AWDB Business Insights & Glossary
+
+**Project:** Test_AWDB
+**Business Domain:** Specialty Bicycle Retail (Adventure Works)
+**Data window:** January 2015 – June 2017
+**Documented:** 2026-06-09
+
+---
+
+## Part 1 — Business Overview
+
+Adventure Works is a specialty bicycle retailer operating across **8 global territories** spanning North America, Europe, and the Pacific. The business sells four product categories — Bikes, Components, Clothing, and Accessories — to a customer base of 18,148 registered individuals.
+
+### Business Model
+- **Direct retail** — sells directly to end consumers (B2C)
+- **Multi-territory** — operates across US, Canada, UK, France, Germany, and Australia
+- **High-value / low-frequency** — average order value $990, average 1.44 orders per customer
+- **Catalogue business** — 293 SKUs across 4 categories and 37 subcategories
+
+---
+
+## Part 2 — Business Insights
+
+### 💰 Insight 1: The Business Tripled in Size Overnight — July 2016
+
+The single most important event in the dataset is a dramatic inflection in July 2016.
+
+| Period | Orders/month | Units/month | Revenue/month |
+|--------|-------------|-------------|---------------|
+| Jan–Jun 2016 | ~284 | ~284 | ~$492K |
+| **Jul 2016** | **506** | **1,954** | **$815K** |
+| Aug–Dec 2016 | ~1,697 | ~6,514 | ~$1,111K |
+| Jan–Jun 2017 | ~1,973 | ~7,552 | ~$1,531K |
+
+Orders grew **5×** and units per order jumped from 1 to ~4 in a single month. This is when Accessories and Clothing began selling alongside Bikes — expanding the average basket from a single high-value item to multiple products per order.
+
+**Business implication:** Any analysis that uses a full-period average (e.g. "avg order value = $990") is a blend of two very different business phases. Pre-July 2016 and post-July 2016 should be treated as separate periods for trend analysis.
+
+---
+
+### 📈 Insight 2: Margin Improves as Product Mix Diversifies
+
+| Period | Gross Margin |
+|--------|-------------|
+| 2015 (Bikes only) | ~40.3% |
+| 2016 H1 | ~42.2% |
+| 2016 H2 onwards | ~42.5–43.3% |
+
+Bikes carry 38–45% margin. Accessories carry 58–64% margin. As the accessory and clothing mix grew post-July 2016, blended margin improved by ~3 percentage points. This is a structurally important insight — growing non-Bike categories is not just a volume story, it is a **margin expansion story**.
+
+---
+
+### 🌍 Insight 3: Australia Is the #1 Market — by a Wide Margin
+
+| Territory | Revenue | Share |
+|-----------|---------|-------|
+| Australia | $2,120,665 | **33%** |
+| Southwest US | $1,264,208 | 20% |
+| Northwest US | $834,501 | 13% |
+| Canada | $610,492 | 10% |
+| United Kingdom | $567,033 | 9% |
+| Germany | $504,014 | 8% |
+| France | $503,322 | 8% |
+| Southeast US | $699 | ~0% |
+| Northeast US | $0 | 0% |
+
+Australia outperforms the entire US combined ($2.1M vs $2.1M split across 3 US regions). Northeast US has zero recorded sales — likely a data gap rather than a true zero.
+
+---
+
+### 🛒 Insight 4: 85.5% of Customers Have Never Bought
+
+| Segment | Customers | % |
+|---------|-----------|---|
+| Have purchased (2015–2017) | 2,630 | 14.5% |
+| Have never purchased | 15,518 | **85.5%** |
+
+The customer master is largely a **prospect and CRM database**, not a pure transaction database. This represents a massive re-engagement opportunity — 15,518 customers who registered or were acquired but never converted.
+
+**Note:** Some non-buyers may have purchased in years prior to 2015, which are outside the dataset scope.
+
+---
+
+### 🏆 Insight 5: High-Margin Products Are Not Being Sold
+
+| Category | Gross Margin | 2015 Revenue | Status |
+|----------|-------------|-------------|--------|
+| Accessories | **58–64%** | $0 | ❌ Unsold in 2015 |
+| Clothing | 28–63% | $0 | ❌ Unsold in 2015 |
+| Components | 40–56% | $0 | ❌ Unsold in 2015 |
+| Bikes | 38–45% | $6,404,934 | ✅ All revenue |
+
+The best-margin category (Accessories at 63%+ margin) generated zero revenue in 2015 while the lowest-margin category (Bikes) drove 100% of sales. Every $1 of accessory revenue generates ~$0.63 gross profit vs ~$0.41 from bikes.
+
+**Business implication:** Driving accessory attach rate per bike sale is the highest-margin growth lever available.
+
+---
+
+### 👥 Insight 6: Less Formally Educated Customers Buy More
+
+| Occupation | Education | Buy Rate (M) | Buy Rate (F) |
+|------------|-----------|-------------|-------------|
+| Professional | Partial High School | **36.7%** | **30.6%** |
+| Management | High School | 23.8% | 23.1% |
+| Professional | Graduate Degree | 13.1% | — |
+| Professional | Partial College | 10.1% | — |
+
+The highest-converting customer segment is **Professionals without a college degree** — buying at 3× the rate of Graduate Degree professionals, despite lower average income. This likely reflects outdoor lifestyle affinity over purely income-driven purchase behaviour.
+
+**Business implication:** Marketing targeting should not be skewed toward the highest-income or highest-education segments — these are actually harder to convert.
+
+---
+
+### 🔄 Insight 7: Return Rate Is Healthy at 2.17%
+
+1,828 units returned out of 84,174 sold = **2.17% return rate**. For a specialty physical goods retailer selling high-value items ($295 avg unit price), this is a strong result. Returns are distributed proportionally to sales volume — no category or territory shows an abnormal spike.
+
+---
+
+### 🔁 Insight 8: Repeat Customers Are Highly Valuable
+
+| Metric | Value |
+|--------|-------|
+| Repeat customer rate | 33.63% |
+| Avg orders (repeat customers) | **4.30 orders** |
+| Avg orders (all customers) | 1.44 orders |
+| Customer LTV range | $2.29 – $12,407.95 |
+
+Once a customer makes a second purchase, they tend to come back repeatedly — averaging 4.3 orders. Acquiring a repeat buyer is therefore disproportionately valuable. The top 36 customers (7+ orders) represent a VIP segment worth identifying and protecting.
+
+---
+
+### 👨‍👩‍👧 Insight 9: Larger Families = Higher Income = Better Customer Profile
+
+| Children (Homeowner) | Avg Income |
+|----------------------|-----------|
+| 0 | $54,160 |
+| 1 | $51,082 |
+| 2 | $54,967 |
+| 3 | $61,457 |
+| 4 | $68,791 |
+| 5 | **$72,760** |
+
+Income rises consistently with family size (with a dip at 1 child — likely young families). Homeowners with 3+ children are among the highest-income segments and should be prioritised for high-value bike and accessory promotions.
+
+---
+
+### 🚵 Insight 10: Road Bikes Dominate Sales — One Model Drives 25% of Revenue
+
+| Product | Units | Revenue | Share of total |
+|---------|-------|---------|----------------|
+| Road-150 Red, 48 | 179 | $640,510 | 10.0% |
+| Road-150 Red, 62 | 169 | $604,728 | 9.4% |
+| Road-150 Red, 52 | 168 | $601,149 | 9.4% |
+| Road-150 Red, 56 | 157 | $561,788 | 8.8% |
+| Road-150 Red, 44 | 139 | $497,380 | 7.8% |
+
+The Road-150 Red (5 size variants) accounts for **~45% of 2015 revenue** ($2.9M of $6.4M). Extreme concentration risk — any supply or demand disruption to this single model significantly impacts total revenue.
+
+---
+
+## Part 3 — Business Glossary
+
+### A
+
+**Annual Income**
+A customer's self-reported or system-recorded yearly earnings. Stored in source as a formatted varchar (`"$60,000 "`). Cleaned and cast to `DECIMAL(18,2)` in `stg_customer`. Used for customer segmentation and purchasing power analysis. 16 distinct income bands ranging from $10,000 to $170,000.
+
+**Avg Customer LTV (Average Customer Lifetime Value)**
+The estimated total revenue a customer will generate over their lifetime relationship with Adventure Works. In `fct_kpi_master`, reported as **$1,904.41**. Applies a forward-looking multiplier on top of `avg_revenue_per_customer` ($1,430.56). The exact formula is undocumented in the current model — the 33% uplift likely accounts for projected repeat purchase cycles based on observed repeat rate (33.63%).
+
+**Avg Order Value (AOV)**
+Total gross revenue divided by total number of orders. `$24,914,567 / 25,164 = $990.09`. Reflects the full multi-category period (2015–2017). AOV was significantly higher in 2015 (~$2,435) when only high-priced Bikes were sold.
+
+**Avg Revenue per Customer**
+Total gross revenue divided by unique buying customers. `$24,914,567 / 17,416 = $1,430.56`. Distinct from `avg_customer_ltv` — this is purely historical, not projected. Verified to match `fct_kpi_master`.
+
+---
+
+### B
+
+**Bikes**
+The core product category. 97 SKUs (32 Mountain, 43 Road, 22 Touring). Price range $539–$3,578. Gross margin 38–45% — the lowest of all four categories. Sole revenue-generating category in 2015.
+
+**Buying Customer**
+A customer record in `dim_customer` who has at least one corresponding row in `fct_sales`. 17,416 out of 18,148 registered customers (95.9%) have purchased during the 2015–2017 window.
+
+---
+
+### C
+
+**Calendar / Date Spine**
+The `calendar` source table and `dim_date` dimension covering Jan 13, 2015 – Jun 30, 2017 (912 days). Used to enable date-based aggregations, period comparisons, and trend analysis. `dim_date` enriches the raw date with: `year`, `month_number`, `month_name`, `quarter`, `week_of_year`, `day_of_week`, `day_name`, `is_weekend`.
+
+**Customer Key (`customer_key`)**
+The natural integer primary key for a customer record, sourced from `customerkey` in the raw `customers` table. Range: 11,000–29,483. Used as the FK in `fct_sales`. Note: Unlike the BrazilianECommerce dataset, this is a stable customer-level key — not an order-scoped ID.
+
+**Customer Unique ID**
+Not applicable in AWDB (applies to BrazilianECommerce). In AWDB, `customer_key` is a true customer identifier.
+
+---
+
+### D
+
+**Date Key (`date_key` / `order_date_key` / `return_date_key`)**
+An integer surrogate key in `YYYYMMDD` format (e.g. `20160715`). Used in `fct_sales` and `fct_returns` as the join key to `dim_date`. Enables efficient date-based filtering in BI tools without string parsing.
+
+---
+
+### E
+
+**Education Level**
+A customer demographic attribute with 5 values: `Partial High School`, `High School`, `Partial College`, `Bachelors`, `Graduate Degree`. Counterintuitively, lower education levels correlate with higher purchase conversion rates among Professional-occupation customers.
+
+---
+
+### F
+
+**Freight Value**
+Not applicable in AWDB. Applies to BrazilianECommerce `order_items` table.
+
+---
+
+### G
+
+**Gross Margin %**
+`(Gross Revenue − COGS) / Gross Revenue × 100`. Blended across all products and years: **41.97%**. Category breakdown:
+- Accessories: 58–64%
+- Clothing: 28–63%
+- Components: 40–56%
+- Bikes: 38–45%
+
+**Gross Profit**
+`Total Gross Revenue − Total COGS = $24,914,567 − $14,456,986 = $10,457,581`. Pre-calculated in `fct_kpi_master` and at line level in `fct_sales` as `order_line_profit`.
+
+---
+
+### H
+
+**Homeowner**
+Boolean customer attribute indicating property ownership. Source stores as `'Y'`/`'N'`; cleaned to `1`/`0` in `stg_customer` as `is_home_owner`. Homeowners earn ~$5K more annually than non-homeowners across equivalent family size brackets.
+
+---
+
+### I
+
+**Income Band**
+One of 16 discrete annual income groups ranging from `$10,000` to `$170,000`. Note: no `$140,000` band exists in the data. Peak concentration at `$60,000` (16.9% of customers).
+
+**is_home_owner**
+Cleaned boolean flag in `stg_customer` and `dim_customer`. `1` = homeowner, `0` = renter. Derived from raw `homeowner = 'Y'/'N'`.
+
+**is_weekend**
+Derived boolean in `dim_date`. `1` if `day_of_week IN (1, 7)` (Sunday/Saturday), else `0`. Enables weekday vs weekend sales analysis.
+
+---
+
+### L
+
+**Line Item**
+A single row in `fct_sales` representing one product sold within one order. Natural key: `order_number + order_line_item`. In 2015, all orders had exactly 1 line item. Post-July 2016, orders average 3.35 line items as multi-product baskets became common.
+
+---
+
+### M
+
+**Marital Status**
+Customer demographic with two values: `Married` / `Single`. Source stores as `'M'`/`'S'`; expanded in `stg_customer`. Roughly even split across the customer base.
+
+**Model Name**
+A product grouping above individual SKUs. For example, `"Road-150"` groups 5 size variants (44, 48, 52, 56, 62) under one model. Used in `dim_product.model_name`.
+
+---
+
+### O
+
+**Occupation**
+Customer demographic with 5 values: `Professional`, `Management`, `Skilled Manual`, `Clerical`, `Manual`. The Professional + Management segments represent the highest-income customers but not necessarily the highest purchase-conversion rate.
+
+**One-Time Customer**
+A customer who has placed exactly 1 order in the data window. `11,559` one-time customers (66.4% of buying customers). Key re-engagement target for second-purchase campaigns.
+
+**Order Date Key**
+Integer surrogate `YYYYMMDD` in `fct_sales`. Joins to `dim_date.date_key` for time-intelligence calculations.
+
+**Order Line Item**
+Sequential integer identifying the position of a product within an order (1, 2, 3…). Forms composite PK with `order_number` in `fct_sales`.
+
+**Order Line Profit**
+`order_line_revenue − order_line_cost`. Pre-calculated measure in `fct_sales`. Positive for all records (no loss-making lines in the dataset).
+
+**Order Line Revenue**
+`order_quantity × product_price`. Pre-calculated measure in `fct_sales`.
+
+**Order Number**
+Alphanumeric order identifier (e.g. `SO45080`). Natural key prefix `SO` = Sales Order. Unique per order, shared across multiple line items.
+
+---
+
+### P
+
+**Product Category**
+The top level of the product hierarchy. Four categories: `Bikes`, `Components`, `Clothing`, `Accessories`. Denormalised into `dim_product.product_category`.
+
+**Product Cost**
+Manufacturing or acquisition cost per unit. Sourced from `products.productcost` (`DECIMAL(18,2)`). Used to calculate COGS and margin. Joined from `dim_product` into `fct_sales` at mart build time.
+
+**Product Key (`product_key`)**
+Natural integer PK for a product. Sourced from `products.productkey`. FK in `fct_sales` and `fct_returns`.
+
+**Product Price**
+Retail selling price per unit. Sourced from `products.productprice` (`DECIMAL(18,2)`). Joined from `dim_product` into `fct_sales` and `fct_returns` at mart build time. Range: $2.29 (bottles) to $3,578.27 (Road-150 Red).
+
+**Product Size**
+Physical size attribute. Meaningful values: `S`, `M`, `L`, `XL` (clothing), numeric sizes `44`–`62` (frames/bikes). Source stores `'0'` as N/A sentinel — cleaned to `NULL` in `stg_product` via `NULLIF`.
+
+**Product SKU**
+Stock Keeping Unit. Alphanumeric product code (e.g. `HL-U509-R`). Unique per product variant. Stored in `dim_product.product_sku`.
+
+**Product Style**
+Style attribute. Meaningful value: `'U'` = Unisex. Source stores `'0'` as N/A sentinel — cleaned to `NULL` in `stg_product`.
+
+**Product Subcategory**
+Mid-level product hierarchy below Category. 37 subcategories (e.g. `Mountain Bikes`, `Helmets`, `Socks`). Denormalised into `dim_product.product_subcategory`.
+
+**Profit Margin %**
+`order_line_profit / order_line_revenue × 100`. Pre-calculated at line level in `fct_sales`. Blended across all products and periods: **41.97%**.
+
+---
+
+### R
+
+**Repeat Customer**
+A customer who has placed 2 or more distinct orders. `5,857` repeat customers (33.63% of all buyers). Once a customer repeats, they average **4.30 orders** — significantly above the overall average of 1.44.
+
+**Repeat Customer Rate %**
+`repeat_customers / total_unique_customers × 100 = 5,857 / 17,416 = 33.63%`. Calculated in `fct_kpi_master`.
+
+**Return Date Key**
+Integer surrogate `YYYYMMDD` in `fct_returns`. Joins to `dim_date.date_key`.
+
+**Return Rate %**
+`total_units_returned / total_units_sold × 100 = 1,828 / 84,174 = 2.17%`. A low rate indicating good product-market fit and quality. Calculated in `fct_kpi_master`.
+
+**Return Value**
+`return_quantity × product_price`. Pre-calculated in `fct_returns`. Total return value across the dataset: **$765,277.54**.
+
+---
+
+### S
+
+**Sales Order (SO)**
+An Adventure Works sales transaction. Identified by `order_number` (prefix `SO`). Can contain multiple line items. Each line item = one product + quantity.
+
+**Stock Date**
+The date a product was stocked or made available. Stored in source as `varchar` with mixed formats. Values are from 2001–2002 — representing product launch dates, not order-related dates. Cleaned in `stg_sales` via `COALESCE(TRY_CONVERT 23, 101)`.
+
+**Surrogate Key**
+A system-generated integer key with no business meaning, used to uniquely identify rows in a dimension table. `fct_returns.return_id` is a surrogate key (`BIGINT`). `dim_date.date_key` is a surrogate key (`INT YYYYMMDD`). `dim_customer` does not currently use a surrogate key — uses the natural `customer_key` from source.
+
+---
+
+### T
+
+**Territory**
+A geographic sales region. 10 territories across 3 continents. Key: `territory_key` (formerly `salesterritorykey`). Hierarchy: `territory → country → continent`. Australia is the top-revenue territory.
+
+**Territory Key (`territory_key`)**
+Natural integer PK for a sales territory (1–10). FK in `fct_sales` and `fct_returns`.
+
+**Total Children**
+Number of dependants reported for a customer. Integer, range 0–5. Positively correlated with income — customers with 5 children average $72,760 annual income vs $54,160 for childless customers.
+
+**Total COGS**
+`SUM(order_line_cost)` across all transactions. `$14,456,986.32` for 2015–2017. Used with `total_gross_revenue` to derive `total_gross_profit` and `gross_margin_pct`.
+
+---
+
+### U
+
+**Units Sold**
+`SUM(order_quantity)` across all line items. **84,174 units** across 2015–2017. Distinct from number of orders (25,164) and line items (56,046) — a single line item can have `order_quantity > 1`.
+
+---
+
+### W
+
+**Weekend Flag (`is_weekend`)**
+`1` if the date falls on a Saturday or Sunday, `0` otherwise. Derived attribute in `dim_date`. Enables weekday/weekend sales pattern analysis.
+
+---
+
+## Key Metrics Reference Card
+
+| Metric | Value | Source |
+|--------|-------|--------|
+| Total revenue (2015–2017) | $24,914,567 | `fct_kpi_master` |
+| Total orders | 25,164 | `fct_kpi_master` |
+| Total units sold | 84,174 | `fct_kpi_master` |
+| Gross margin | 41.97% | `fct_kpi_master` |
+| Avg order value | $990.09 | `fct_kpi_master` |
+| Avg revenue per customer | $1,430.56 | `fct_kpi_master` |
+| Avg customer LTV | $1,904.41 | `fct_kpi_master` |
+| Return rate | 2.17% | `fct_kpi_master` |
+| Repeat customer rate | 33.63% | `fct_kpi_master` |
+| Avg orders per customer | 1.44 | `fct_kpi_master` |
+| Total unique customers | 17,416 | `fct_kpi_master` |
+| Top territory | Australia ($2.12M) | `fct_sales` + `dim_territory` |
+| Top product | Road-150 Red (5 variants, ~$2.9M) | `fct_sales` + `dim_product` |
+| Business inflection date | July 2016 | `fct_sales` trend |
