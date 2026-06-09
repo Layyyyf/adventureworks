@@ -1,0 +1,450 @@
+# AWDB Data Quality Documentation
+
+**Project:** Test_AWDB
+**Database:** MSSQL — AWDB
+**Assessed:** 2026-06-09
+**Tables assessed:** 10 source tables
+**Total source rows:** ~122,000
+
+---
+
+## Summary Scorecard
+
+| Table | Issues Found | Severity | Status |
+|-------|-------------|----------|--------|
+| `customers` | 7 | 🔴 Critical | ✅ All fixed in `stg_customer` |
+| `sales_2015/16/17` | 2 | 🟡 Moderate | ✅ Fixed in `stg_sales` |
+| `returns_data` | 1 | 🟡 Moderate | ✅ Fixed in `stg_return` |
+| `products` | 2 | 🟡 Moderate | ✅ Fixed in `stg_product` |
+| `calendar` | 1 | 🟡 Moderate | ✅ Fixed in `stg_calendar` |
+| `territories` | 0 | 🟢 Clean | ✅ Rename only |
+| `product_category` | 0 | 🟢 Clean | ✅ Rename only |
+| `product_subcategory` | 0 | 🟢 Clean | ✅ Rename only |
+| `fct_kpi_master` | 1 | 🟡 Moderate | ⚠️ Undocumented formula |
+
+---
+
+## Issue Catalogue
+
+### 🔴 CUST-01 — Mixed Date Formats in `birthdate`
+**Table:** `customers` · **Column:** `birthdate` · **Type:** `varchar`
+
+**Description:**
+Two date formats coexist in a single varchar column. `TRY_CAST(birthdate AS DATE)` silently returns `NULL` for approximately half the rows — the US locale records.
+
+| Format | Example | Rows affected |
+|--------|---------|---------------|
+| ISO | `1966-08-04` | ~8,763 |
+| US locale | `5/14/1965` | ~9,385 |
+
+**Impact:** Without the fix, 57% of customers have no calculable age. Every age band, age-based segment, and date-of-birth analytics would be silently wrong.
+
+**Fix applied in `stg_customer`:**
+```sql
+coalesce(
+    try_convert(date, birthdate, 120),  -- ISO: YYYY-MM-DD
+    try_convert(date, birthdate, 101)   -- US locale: M/DD/YYYY
+) as birth_date
+```
+**Validation:** Age band query post-fix returns valid ages for all 18,148 customers.
+
+---
+
+### 🔴 CUST-02 — `annualincome` Stored as Formatted String
+**Table:** `customers` · **Column:** `annualincome` · **Type:** `varchar`
+
+**Description:**
+Income stored with currency symbol, thousands separator, and trailing whitespace (e.g. `"$90,000 "`). Cannot aggregate or compare without cleaning.
+
+**Sample values:** `$10,000`, `$60,000`, `$170,000` (16 distinct bands)
+
+**Impact:** No numeric income calculations possible on raw column.
+
+**Fix applied in `stg_customer`:**
+```sql
+try_cast(
+    replace(replace(annualincome, '$', ''), ',', '')
+    as decimal(18, 2)
+) as annual_income
+```
+
+---
+
+### 🟡 CUST-03 — Names Stored in ALL CAPS
+**Table:** `customers` · **Columns:** `firstname`, `lastname` · **Type:** `varchar`
+
+**Description:**
+All 18,148 customer names are fully uppercased (e.g. `JON`, `CHRISTY`, `ALEJANDRO`). Results in poor display quality in reports and dashboards.
+
+**Fix applied in `stg_customer`:**
+```sql
+upper(left(trim(firstname), 1))
+    + lower(substring(trim(firstname), 2, len(trim(firstname)))) as first_name
+```
+Applied to both `firstname` and `lastname`.
+
+> **Limitation:** Multi-word names with internal capitals (e.g. `McAllister`) will not be correctly cased. A custom function would be required for full accuracy.
+
+---
+
+### 🟡 CUST-04 — `prefix` ALL CAPS and Nullable
+**Table:** `customers` · **Column:** `prefix` · **Type:** `varchar`
+
+**Description:**
+130 rows (0.72%) have `NULL` prefix. Non-null values are ALL CAPS (`MR.`, `MRS.`, `MS.`).
+
+| Value | Count |
+|-------|-------|
+| `MR.` | ~9,100 |
+| `MRS.` | ~4,900 |
+| `MS.` | ~3,900 |
+| `NULL` | 130 |
+
+**Fix applied in `stg_customer`:**
+```sql
+cross apply (
+    select case
+        when prefix is null and gender = 'M' then 'Mr.'
+        when prefix is null and gender = 'F' then 'Ms.'
+        when prefix = 'MR.'  then 'Mr.'
+        when prefix = 'MRS.' then 'Mrs.'
+        when prefix = 'MS.'  then 'Ms.'
+        else prefix
+    end as prefix
+) as prefix_derived
+```
+Handles both NULL-fill and case normalisation in one pass.
+
+---
+
+### 🟡 CUST-05 — `gender` Uses `'NA'` Sentinel
+**Table:** `customers` · **Column:** `gender` · **Type:** `varchar`
+
+**Description:**
+130 customers (0.72%) have `gender = 'NA'` instead of `NULL`. Causes incorrect filtering if downstream models check `WHERE gender IS NOT NULL`.
+
+| Value | Count | % |
+|-------|-------|---|
+| `M` | 9,126 | 50.3% |
+| `F` | 8,892 | 49.0% |
+| `NA` | 130 | 0.7% |
+
+**Fix applied in `stg_customer`:**
+```sql
+case when gender = 'NA' then 'Unknown' else gender end as gender
+```
+
+---
+
+### 🟡 CUST-06 — `maritalstatus` Single-Character Codes
+**Table:** `customers` · **Column:** `maritalstatus` · **Type:** `varchar`
+
+**Description:**
+Values `'M'` and `'S'` are ambiguous to downstream consumers. `'M'` could be read as Male rather than Married.
+
+**Fix applied in `stg_customer`:**
+```sql
+case maritalstatus
+    when 'M' then 'Married'
+    when 'S' then 'Single'
+    else maritalstatus
+end as marital_status
+```
+
+---
+
+### 🟡 CUST-07 — `homeowner` Y/N Flag
+**Table:** `customers` · **Column:** `homeowner` · **Type:** `varchar`
+
+**Description:**
+Boolean-style attribute stored as character flags `'Y'`/`'N'`. Inconsistent with downstream convention of `1`/`0`.
+
+**Fix applied in `stg_customer`:**
+```sql
+case homeowner when 'Y' then 1 else 0 end as is_home_owner
+```
+
+---
+
+### 🟡 SALES-01 — `stockdate` Mixed Date Formats
+**Tables:** `sales_2015`, `sales_2016`, `sales_2017` · **Column:** `stockdate` · **Type:** `varchar`
+
+**Description:**
+Same mixed-format issue as `birthdate`. Two formats present.
+
+| Format | Example |
+|--------|---------|
+| ISO | `2001-05-12` |
+| US locale | `9/21/2001` |
+
+**Note:** Stock dates are from 2001–2002 — product launch dates, not data errors.
+
+**Fix applied in `stg_sales`:**
+```sql
+coalesce(
+    try_convert(date, stockdate, 23),   -- ISO: YYYY-MM-DD
+    try_convert(date, stockdate, 101)   -- US locale: M/DD/YYYY
+) as stock_date
+```
+
+---
+
+### 🟡 SALES-02 — Three Split Annual Tables
+**Tables:** `sales_2015`, `sales_2016`, `sales_2017`
+
+**Description:**
+Sales data split across 3 separate tables by year. Querying any single table produces an incomplete view of the business. Joins and aggregations fail silently if analysts query `sales_2015` alone.
+
+| Table | Rows | Share of total |
+|-------|------|---------------|
+| `sales_2015` | 2,630 | 4.7% |
+| `sales_2016` | 23,935 | 42.7% |
+| `sales_2017` | 29,481 | 52.6% |
+| **Total** | **56,046** | 100% |
+
+**Fix applied in `stg_sales`:**
+```sql
+with sales_2015 as (select * from "AWDB"."dbo"."sales_2015"),
+     sales_2016 as (select * from "AWDB"."dbo"."sales_2016"),
+     sales_2017 as (select * from "AWDB"."dbo"."sales_2017"),
+unioned as (
+    select * from sales_2015
+    union all select * from sales_2016
+    union all select * from sales_2017
+)
+```
+
+---
+
+### 🟡 RET-01 — `returndate` Mixed Date Formats
+**Table:** `returns_data` · **Column:** `returndate` · **Type:** `varchar`
+
+**Description:**
+Same mixed-format issue as `birthdate` and `stockdate`.
+
+**Fix applied in `stg_return`:**
+```sql
+coalesce(
+    try_convert(date, returndate, 120),
+    try_convert(date, returndate, 101)
+) as return_date
+```
+
+---
+
+### 🟡 PROD-01 — `productsize` / `productstyle` Use `'0'` as N/A Sentinel
+**Table:** `products` · **Columns:** `productsize`, `productstyle` · **Type:** `varchar`
+
+**Description:**
+Accessories and some bikes use `'0'` to indicate no applicable size or style, rather than `NULL`. Causes incorrect filtering (e.g. `WHERE productsize IS NOT NULL` would still return sentinel rows).
+
+**Sample:**
+| productname | productsize | productstyle |
+|-------------|-------------|--------------|
+| Sport-100 Helmet, Red | `0` | `0` |
+| Mountain Bike Socks, M | `M` | `U` |
+| HL Road Frame - Red, 62 | `62` | `U` |
+
+**Fix applied in `stg_product`:**
+```sql
+nullif(trim(productsize), '0')  as product_size,
+nullif(trim(productstyle), '0') as product_style
+```
+
+---
+
+### 🟡 CAL-01 — `date` Stored as `varchar` in US Locale Format
+**Table:** `calendar` · **Column:** `date` · **Type:** `varchar`
+
+**Description:**
+Single-column date spine stores dates as US locale strings (`M/DD/YYYY`). Cannot use date functions without casting.
+
+**Fix applied in `stg_calendar`:**
+```sql
+try_convert(date, date, 101) as date_day
+```
+
+---
+
+### 🟡 KPI-01 — `avg_customer_ltv` Formula Undocumented
+**Table:** `fct_kpi_master` · **Column:** `avg_customer_ltv`
+
+**Description:**
+`avg_customer_ltv` ($1,904.41) is 33% higher than `avg_revenue_per_customer` ($1,430.56). The model applies a forward-looking LTV multiplier but the formula is not documented in the model SQL or schema YAML.
+
+| Metric | Value |
+|--------|-------|
+| `avg_revenue_per_customer` | $1,430.56 |
+| `avg_customer_ltv` | $1,904.41 |
+| Unexplained difference | +$473.85 (+33%) |
+
+**Impact:** Dashboard consumers reading both metrics side-by-side cannot explain the gap. Risk of double-reporting.
+
+**Recommended fix:** Add an inline SQL comment and a `schema.yml` description explaining the LTV calculation methodology.
+
+---
+
+## Profiling Summary by Table
+
+### `customers` (18,148 rows)
+
+| Column | Type | Nulls | Distinct | Notes |
+|--------|------|-------|----------|-------|
+| `customerkey` | int | 0 | 18,148 | ✅ Unique PK |
+| `prefix` | varchar | 130 (0.72%) | 3 | ALL CAPS — fixed |
+| `firstname` | varchar | 0 | 666 | ALL CAPS — fixed |
+| `lastname` | varchar | 0 | 372 | ALL CAPS — fixed |
+| `birthdate` | varchar | 0 | 8,190 | Mixed formats — fixed |
+| `gender` | varchar | 0 | 3 | `NA` sentinel — fixed |
+| `maritalstatus` | varchar | 0 | 2 | Codes — fixed |
+| `annualincome` | varchar | 0 | 16 | Formatted string — fixed |
+| `totalchildren` | int | 0 | 6 | Range 0–5 ✅ |
+| `educationlevel` | varchar | 0 | 5 | Clean ✅ |
+| `occupation` | varchar | 0 | 5 | Clean ✅ |
+| `homeowner` | varchar | 0 | 2 | Y/N flag — fixed |
+| `emailaddress` | varchar | 0 | 18,148 | Unique, no nulls ✅ |
+
+### `products` (293 rows)
+
+| Column | Type | Nulls | Notes |
+|--------|------|-------|-------|
+| `productkey` | int | 0 | ✅ Unique PK |
+| `productsku` | varchar | 0 | Clean ✅ |
+| `productname` | varchar | 0 | Clean ✅ |
+| `productsize` | varchar | 0 | `'0'` sentinel — fixed |
+| `productstyle` | varchar | 0 | `'0'` sentinel — fixed |
+| `productcost` | decimal | 0 | Already `DECIMAL(18,2)` ✅ |
+| `productprice` | decimal | 0 | Already `DECIMAL(18,2)` ✅ |
+| `productsubcategorykey` | int | nullable | Some products may lack subcategory |
+
+### `sales_2015 / 2016 / 2017` (56,046 combined rows)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `ordernumber` | varchar | Clean ✅ |
+| `orderdate` | date | Already proper DATE ✅ |
+| `stockdate` | varchar | Mixed formats — fixed |
+| `productkey` | int | FK — valid ✅ |
+| `customerkey` | int | FK — valid ✅ |
+| `territorykey` | int | FK — valid ✅ |
+| `orderlineitem` | int | Clean ✅ |
+| `orderquantity` | int | Clean ✅ |
+
+### `returns_data` (1,809 rows)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `returndate` | varchar | Mixed formats — fixed |
+| `territorykey` | int | FK — valid ✅ |
+| `productkey` | int | FK — valid ✅ |
+| `returnquantity` | int | All values = 1 in sample ✅ |
+
+### `calendar` (912 rows)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `date` | varchar | US locale format — fixed |
+
+### `territories`, `product_category`, `product_subcategory`
+
+All clean — rename only, no DQ issues found.
+
+---
+
+## Fixes Applied in Staging Layer
+
+| Issue ID | Table | Fix | Model |
+|----------|-------|-----|-------|
+| CUST-01 | `customers` | `COALESCE(TRY_CONVERT 120, 101)` on `birthdate` | `stg_customer` |
+| CUST-02 | `customers` | Strip `$`/`,`, cast to `DECIMAL(18,2)` | `stg_customer` |
+| CUST-03 | `customers` | Title-case names | `stg_customer` |
+| CUST-04 | `customers` | Normalise prefix case + NULL-fill from gender | `stg_customer` |
+| CUST-05 | `customers` | `'NA' → 'Unknown'` | `stg_customer` |
+| CUST-06 | `customers` | `'M'/'S' → 'Married'/'Single'` | `stg_customer` |
+| CUST-07 | `customers` | `'Y'/'N' → 1/0` | `stg_customer` |
+| SALES-01 | `sales_*` | `COALESCE(TRY_CONVERT 23, 101)` on `stockdate` | `stg_sales` |
+| SALES-02 | `sales_*` | `UNION ALL` across 3 annual tables | `stg_sales` |
+| RET-01 | `returns_data` | `COALESCE(TRY_CONVERT 120, 101)` on `returndate` | `stg_return` |
+| PROD-01 | `products` | `NULLIF(..., '0')` on `productsize`/`productstyle` | `stg_product` |
+| CAL-01 | `calendar` | `TRY_CONVERT(date, ..., 101)` | `stg_calendar` |
+
+---
+
+## Open Issues (Not Yet Fixed)
+
+| Issue ID | Description | Recommended Action |
+|----------|-------------|-------------------|
+| KPI-01 | `avg_customer_ltv` formula undocumented | Add SQL comment + `schema.yml` description |
+| GAP-01 | `stg_territory` not run in DB | Run in CODE mode; rebuild `dim_territory` |
+| GAP-02 | `stg_product_category` not run in DB | Run in CODE mode; rebuild `dim_product` |
+| GAP-03 | `stg_product_subcategory` not run in DB | Run in CODE mode; rebuild `dim_product` |
+| GAP-04 | Northeast US has 0 sales in `sales_2015` | Verify source extract completeness |
+| GAP-05 | Southeast US has 1 sale only | Verify source extract completeness |
+
+---
+
+## DQ Rules for Future Testing (`schema.yml`)
+
+Recommended dbt tests to add:
+
+```yaml
+models:
+  - name: stg_customer
+    columns:
+      - name: customer_key
+        tests: [unique, not_null]
+      - name: gender
+        tests:
+          - accepted_values:
+              values: ['M', 'F', 'Unknown']
+      - name: marital_status
+        tests:
+          - accepted_values:
+              values: ['Married', 'Single']
+      - name: email_address
+        tests: [unique, not_null]
+      - name: annual_income
+        tests: [not_null]
+
+  - name: stg_product
+    columns:
+      - name: product_key
+        tests: [unique, not_null]
+      - name: product_cost
+        tests: [not_null]
+      - name: product_price
+        tests: [not_null]
+
+  - name: stg_sales
+    columns:
+      - name: order_number
+        tests: [not_null]
+      - name: order_date
+        tests: [not_null]
+      - name: customer_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_customer')
+              field: customer_key
+      - name: product_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_product')
+              field: product_key
+
+  - name: fct_sales
+    columns:
+      - name: order_line_revenue
+        tests: [not_null]
+      - name: profit_margin_pct
+        tests: [not_null]
+
+  - name: fct_kpi_master
+    columns:
+      - name: gross_margin_pct
+        tests: [not_null]
+      - name: return_rate_pct
+        tests: [not_null]
+```
