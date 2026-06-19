@@ -387,24 +387,3 @@ Number of dependants reported for a customer. Integer, range 0–5. Positively c
 
 **Weekend Flag (`is_weekend`)**
 `1` if the date falls on a Saturday or Sunday, `0` otherwise. Derived attribute in `dim_date`. Enables weekday/weekend sales pattern analysis.
-
----
-
-## Key Metrics Reference Card
-
-| Metric | Value | Source |
-|--------|-------|--------|
-| Total revenue (2015–2017) | $24,914,567 | `fct_kpi_master` |
-| Total orders | 25,164 | `fct_kpi_master` |
-| Total units sold | 84,174 | `fct_kpi_master` |
-| Gross margin | 41.97% | `fct_kpi_master` |
-| Avg order value | $990.09 | `fct_kpi_master` |
-| Avg revenue per customer | $1,430.56 | `fct_kpi_master` |
-| Avg customer LTV | $1,904.41 | `fct_kpi_master` |
-| Return rate | 2.17% | `fct_kpi_master` |
-| Repeat customer rate | 33.63% | `fct_kpi_master` |
-| Avg orders per customer | 1.44 | `fct_kpi_master` |
-| Total unique customers | 17,416 | `fct_kpi_master` |
-| Top territory | Australia ($2.12M) | `fct_sales` + `dim_territory` |
-| Top product | Road-150 Red (5 variants, ~$2.9M) | `fct_sales` + `dim_product` |
-| Business inflection date | July 2016 | `fct_sales` trend |
