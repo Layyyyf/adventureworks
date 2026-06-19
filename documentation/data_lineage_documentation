@@ -244,15 +244,3 @@ Single-row aggregate table. 24 pre-calculated KPIs covering the full 2015–2017
 > ⚠️ `avg_customer_ltv` ($1,904) differs from `avg_revenue_per_customer` ($1,431) — the LTV formula applies a forward-looking multiplier that is not documented in the model code.
 
 ---
-
-## Lineage Gaps & Recommended Actions
-
-| Gap | Affected Objects | Recommended Fix | Priority |
-|-----|-----------------|-----------------|----------|
-| `stg_territory` not run in DB | `dim_territory` bypasses DQ layer | Run `stg_territory` in CODE mode | 🔴 High |
-| `stg_product_category` not run | `dim_product` bypasses DQ layer | Run `stg_product_category` in CODE mode | 🔴 High |
-| `stg_product_subcategory` not run | `dim_product` bypasses DQ layer | Run `stg_product_subcategory` in CODE mode | 🔴 High |
-| `fct_kpi_master` upstream not tracked by DB | Invisible in `sys.sql_expression_dependencies` | Document in dbt `schema.yml` | 🟡 Medium |
-| `avg_customer_ltv` formula undocumented | Confusing vs `avg_revenue_per_customer` | Add inline SQL comment + wiki note | 🟡 Medium |
-| No surrogate key on `dim_customer` | Brittle if source key changes | Add `customer_sk` surrogate in dim layer | 🟢 Low |
-| `fct_kpi_master` is a single-row flat summary | No time / territory / category slicing | Build `kpi_by_month`, `kpi_by_territory`, `kpi_by_category` | 🟢 Low |
